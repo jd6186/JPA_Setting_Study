@@ -145,7 +145,7 @@ public class Member {
    <img src='src/main/resources/static/img/NotRelationMapping.png'/>
 <br/><br/><br/><br/>
 
-#### 2. 연관관계 설정을 통해 해당 객체 자체를 가져와 매핑하는 방법(객체지향적인 )
+#### 2. 연관관계 설정을 통해 해당 객체 자체를 가져와 매핑하는 방법
    1. @ManyToOne(단방향 관계) 매핑
       * @JoinColumn을 활용해 Join할 객체의 PK값을 적어주어 FK 제약사항 설정<br/>
         1:N 관계 시에 사용되며 상위 객체에서는 하위 객체를 알 수 없고 하위 객체에서만 상위 객체를 조회 가능<br/>
