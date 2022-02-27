@@ -8,16 +8,70 @@
 * 기존에는 EJB 전문가 그룹에 의해 개발되었지만 추후 웹 애플리케이션 및 애플리케이션 클라이언트가 직접하숑할 수 있게 Java EE, Java SE 등에서도 사용 가능해진 상태
 <br/><br/><br/><br/>
 
+### 각 컬럼 속성 관리 어노테이션 정리
+#### 종류
+1. @Id - 해당 Table의 Primary Key 컬럼 위에 사용. 무조건 있어야 하며 없을 시 오류 발생
+   * @GeneratedValue
+     * Id에 해당하는 컬럼의 value들을 자동으로 넣어주고자 할 때 사용(Auto increment와 같이)
+     * 사용 예시 
+       * @GeneratedValue(strategy = GenerationType.AUTO)
+       * GenerationType에 따라 관계형 DB에 매핑
+         * IDENTITY - 데이터베이스에 위임(MySQL)
+         * SEQUENCE - 데이터베이스 시퀀스 오브젝트 사용(ORACLE)
+           * @SequenceGenerator 필요 
+         * TABLE - 키 생성용 테이블 사용, 모든 DB에서 사용
+           * @TableGenerator 필요
+         * AUTO - 방언에 따라 자동 지정, 기본값
+   * 키 지정 시 주의사항
+     * Long타입 사용을 통해 대량의 데이터 처리가 가능하도록 조정
+     * 대체키 사용을 통해 비지니스로직과는 전혀 상관없는 키를 운용
+       * 나중에 비지니스 로직이 바뀌어도 변경할 필요가 없게
+     * 키 생성전략 사용(GeneratedValue)
+2. @Column 
+   * 해당 컬럼의 이름, 제약 조건 및 타입을 관리하기 위해 적용
+   * name - 컬럼명 설정
+   * length - 해당 데이터타입의 길이 설정 기본 255
+   * nullable - null값 가능여부
+   * unique - DB unique 제약조건과 동일
+3. @Temporal
+   * 날짜 타입은 @Temporal 사용
+   * DATE - 날짜
+   * TIME - 시간
+   * TIMESTAMP - 날짜와 시간
+4. @Transient
+   * DB랑 매핑할 필요는 없는데 해당 Domain에서 관리해야되는 변수가 존재할 때는 @Transient 사용
+
+#### 예시
+```
+public class Member {
+    @Id @GeneratedValue(strategy = GenerationType.AUTO)
+    private Long id;
+    private String name;
+    @Column(name = "PHONE_NUMBER", length = 50, nullable = false)
+    private String user_phone_member;
+
+    @Temporal(TemporalType.DATE)
+    private Date reg_date;
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date update_date;
+
+    // DB랑 매핑할 필요는 없는데 해당 Domain에서 관리해야되는 변수가 존재할 때는 @Transient
+    @Transient
+    private String tempData;
+}
+```
+<br/><br/><br/><br/>
+
 ### 주의사항
 1. EntityManagerFactory는 서버 실행 시 단일 인스턴스 후 전체 EntityManager 인스턴스 시 공유해 사용
    * 관계형 데이터베이스와 Connection 연결하는 부분이므로 여러번 할 필요가 없음
-
+<br/>
 2. EntityManager는 각 작업 단위별로 개별 생성 후 처리
    * EntityManager는 트랜젝션을 관리하기 때문에 데이터 정합성 오류가 발생할 위험 요소를 제거하기 위해 각 작업 단위별로 트랜젝션 처리 후 close 필요
-
+<br/>
 3. persistence.xml 내 property들 중 hibernate.hbm2ddl.auto의 value값은 개발, 운영 서버에서는 무조건 none으로 처리
    * create, update 등 사용 시 개발, 운영 데이터가 소실 또는 시스템 장애가 발생할 위험이 있음
-
+<br/>
 4. Column 데이터 타입으로 Enum을 쓸 때는 EnumType.ORDINAL을 쓰게 되면 각 enum들을 0, 1, 2 ... 순서대로 숫자로 DB에 저장하게 됨
    * 이렇게 되면 Enum 타입이 하나 중간에 추가되면 DB전체 데이터를 모두 바꿔야하는 상황이 되버리므로 EnumType.STRING으로 저장 필수!
    * Member.java
@@ -69,7 +123,7 @@
        }
       }
     ```
-    
+<br/>
 5. DB랑 매핑할 필요는 없는데 해당 Domain에서 관리해야되는 변수가 존재할 때는 @Transient
    * 예시
     ```java
