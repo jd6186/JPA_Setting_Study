@@ -19,11 +19,19 @@ repositories {
 }
 
 dependencies {
-	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	//	spring boot API관리
 	implementation 'org.springframework.boot:spring-boot-starter-web'
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+
+	// DB 관련 API 관리
+	// H2는 Test DB
+	testImplementation group: 'com.h2database', name: 'h2', version: '1.4.200'
+	implementation group: 'org.hibernate', name: 'hibernate-entitymanager', version: '5.3.7.Final'
+
+	// 기타 util 성 API 관리
 	compileOnly 'org.projectlombok:lombok'
 	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
 
 tasks.named('test') {
