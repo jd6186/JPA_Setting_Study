@@ -4,6 +4,7 @@ import com.study.jpa_setting_study.admin.manager.domain.Manager;
 import com.study.jpa_setting_study.admin.member.domain.Member;
 import com.study.jpa_setting_study.admin.member.domain.MemberType;
 import com.study.jpa_setting_study.admin.player.domain.Player;
+import com.study.jpa_setting_study.admin.stadium.domain.Stadium;
 import com.study.jpa_setting_study.admin.team.domain.Team;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
@@ -17,6 +18,7 @@ import javax.persistence.Persistence;
 import javax.transaction.Transaction;
 import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 import java.util.TimeZone;
 
 @SpringBootTest
@@ -108,7 +110,7 @@ class JpaSettingStudyApplicationTests {
 	 * ManyToOne(단방향) 연관관계 매핑
 	 */
 	@Test
-	void manyToOneRelationshipMapping(){
+	void manyToOneSingleRelationshipMapping(){
 		EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
 		EntityManager em = emf.createEntityManager();
 		EntityTransaction et = em.getTransaction();
@@ -129,6 +131,63 @@ class JpaSettingStudyApplicationTests {
 
 			Player newPlayer = em.find(Player.class, player.getPlayerId());
 			System.out.println("Player Team Name : " + newPlayer.getTeam().getTeamName());
+		} catch (Exception ex){
+			et.rollback();
+			System.err.println("Error Rollback : " + ex);
+		} finally {
+			em.close();
+			emf.close();
+		}
+	}
+
+	/**
+	 * ManyToOne(단방향) 연관관계 매핑
+	 */
+	@Test
+	void manyToOneMultiRelationshipMapping(){
+		EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
+		EntityManager em = emf.createEntityManager();
+		EntityTransaction et = em.getTransaction();
+		et.begin();
+
+		try{
+			Team team = new Team();
+			team.setTeamName("필라델피아 식서스");
+			em.persist(team);
+			System.out.println("??");
+
+			// Persist는 Entity Manager가 파라미터에 입력된 객체를 관리하도록 등록만 한 상태
+			Stadium stadium1 = new Stadium();
+			stadium1.setStadiumName("뉴욕 경기장");
+			stadium1.setTeam(team);
+			em.persist(stadium1);
+
+			Stadium stadium2 = new Stadium();
+			stadium2.setStadiumName("필라델피아 경기장");
+			stadium2.setTeam(team);
+			em.persist(stadium2);
+
+			// team객체에 stadium객체들 add
+			// 오류를 줄이기 위해 작성할 뿐 사실 주인 객체인 team객체를 생성할 때 이미 반영됨
+			team.getStadiums().add(stadium1);
+			team.getStadiums().add(stadium2);
+
+			// flush를 통해 EntityManager에 등록된 테이블에 실제 저장될 데이터 영속화 시키기
+			// 이 과정이 빠지면 데이터 Select 해도 저장된 결과가 없음
+			em.flush();
+			em.clear();
+
+			// Transaction 처리
+			et.commit();
+			
+			// 저장된 데이터 조회
+			Stadium newStadium1 = em.find(Stadium.class, stadium2.getStadiumId());
+			Team tempTeam = newStadium1.getTeam();
+			List<Stadium> stadiums = tempTeam.getStadiums();
+			stadiums.forEach((stadi)->{
+				System.out.println("S_ID : " + stadi.getStadiumId() + "\nS_NAME : " + stadi.getStadiumName());
+			});
+
 		} catch (Exception ex){
 			et.rollback();
 			System.err.println("Error Rollback : " + ex);

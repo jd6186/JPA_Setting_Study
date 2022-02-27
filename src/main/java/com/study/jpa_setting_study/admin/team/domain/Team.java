@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import javax.persistence.*;
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -19,5 +20,5 @@ public class Team {
     
     // 양방향 관계일 때는 부모 테이블에 @OneToMany 어노테이션을 붙여줘야 함
     @OneToMany(mappedBy = "team")
-    private List<Stadium> stadiums;
+    private List<Stadium> stadiums = new ArrayList<>();
 }

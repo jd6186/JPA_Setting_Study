@@ -6,6 +6,7 @@
         <class>com.study.jpa_setting_study.admin.manager.domain.Manager</class>
         <class>com.study.jpa_setting_study.admin.team.domain.Team</class>
         <class>com.study.jpa_setting_study.admin.player.domain.Player</class>
+        <class>com.study.jpa_setting_study.admin.stadium.domain.Stadium</class>
 
         <!-- DB연결 속성값들 -->
         <properties>
