@@ -1,9 +1,10 @@
 package com.study.jpa_setting_study;
 
 import com.study.jpa_setting_study.admin.manager.domain.Manager;
-import com.study.jpa_setting_study.admin.manager.domain.Team;
 import com.study.jpa_setting_study.admin.member.domain.Member;
 import com.study.jpa_setting_study.admin.member.domain.MemberType;
+import com.study.jpa_setting_study.admin.player.domain.Player;
+import com.study.jpa_setting_study.admin.team.domain.Team;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration;
@@ -13,6 +14,7 @@ import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
+import javax.transaction.Transaction;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
@@ -67,7 +69,7 @@ class JpaSettingStudyApplicationTests {
 	}
 
 	/**
-	 * 연관관계 매핑 방법
+	 * 연관관계 매핑 없이 연결하는 법
 	 */
 	@Test
 	void tableRelationshipMapping(){
@@ -77,9 +79,6 @@ class JpaSettingStudyApplicationTests {
 		EntityTransaction et1 = em1.getTransaction();
 		et1.begin();
 
-		// 아래 Try Catch블럭에 있는 방식으로도 조회는 가능
-		// 하지만 연관관계가 설정되어 있지 않아 조회 시에도 따로 두번 불러야만 조회 가능한 구조
-		// 너무 데이터 지향적인 코딩이며 객체 지향과는 어울리지 않는 코딩 방식
 		try {
 			Team team = new Team();
 			team.setTeamName("리더스");
@@ -101,6 +100,40 @@ class JpaSettingStudyApplicationTests {
 			System.err.println("Error Rollback : " + ex);
 		} finally {
 			em1.close();
+			emf.close();
+		}
+	}
+
+	/**
+	 * ManyToOne(단방향) 연관관계 매핑
+	 */
+	@Test
+	void manyToOneRelationshipMapping(){
+		EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
+		EntityManager em = emf.createEntityManager();
+		EntityTransaction et = em.getTransaction();
+		et.begin();
+
+		try{
+			Team team = new Team();
+			team.setTeamName("필라델피아 식서스");
+			em.persist(team);
+			System.out.println("??");
+
+			Player player = new Player();
+			player.setPlayerName("제임스하든");
+			player.setTeam(team);
+			em.persist(player);
+			System.out.println("???");
+			et.commit();
+
+			Player newPlayer = em.find(Player.class, player.getPlayerId());
+			System.out.println("Player Team Name : " + newPlayer.getTeam().getTeamName());
+		} catch (Exception ex){
+			et.rollback();
+			System.err.println("Error Rollback : " + ex);
+		} finally {
+			em.close();
 			emf.close();
 		}
 	}
