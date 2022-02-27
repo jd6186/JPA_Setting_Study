@@ -66,13 +66,47 @@ public class Member {
 1. EntityManagerFactory는 서버 실행 시 단일 인스턴스 후 전체 EntityManager 인스턴스 시 공유해 사용
    * 관계형 데이터베이스와 Connection 연결하는 부분이므로 여러번 할 필요가 없음
 <br/>
+
 2. EntityManager는 각 작업 단위별로 개별 생성 후 처리
    * EntityManager는 트랜젝션을 관리하기 때문에 데이터 정합성 오류가 발생할 위험 요소를 제거하기 위해 각 작업 단위별로 트랜젝션 처리 후 close 필요
 <br/>
+
 3. persistence.xml 내 property들 중 hibernate.hbm2ddl.auto의 value값은 개발, 운영 서버에서는 무조건 none으로 처리
    * create, update 등 사용 시 개발, 운영 데이터가 소실 또는 시스템 장애가 발생할 위험이 있음
 <br/>
-4. Column 데이터 타입으로 Enum을 쓸 때는 EnumType.ORDINAL을 쓰게 되면 각 enum들을 0, 1, 2 ... 순서대로 숫자로 DB에 저장하게 됨
+
+4. Build Tool이 Gradle일 때는 Entity로 활용할 Class들을 직접 등록해줘야 인식 가능
+     ```
+     <?xml version="1.0" encoding="UTF-8" ?>
+     <persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence" version="2.2">
+         <persistence-unit name="jpa_setting_study">
+             <!-- Gradle로 빌드 시에는 사용할 Entity를 등록해 줘야함 -->
+             <class>com.study.jpa_setting_study.admin.member.domain.Member</class>
+             <class>com.study.jpa_setting_study.admin.manager.domain.Manager</class>
+             <class>com.study.jpa_setting_study.admin.manager.domain.Team</class>
+
+             <!-- DB연결 속성값들 -->
+             <properties>
+                 <!-- 함수 속성 -->
+                 <property name="javax.persistence.jdbc.driver" value="org.h2.Driver"/>
+                 <property name="javax.persistence.jdbc.user" value="amway"/>
+                 <property name="javax.persistence.jdbc.password" value="1234"/>
+                 <property name="javax.persistence.jdbc.url" value="jdbc:h2:tcp://localhost/~/test"/>
+                 <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
+
+                 <!-- 옵션 -->
+                 <property name="hibernate.show_sql" value="true"/>
+                 <property name="hibernate.format_sql" value="true"/>
+                 <property name="hibernate.use_sql_comments" value="true"/>
+                 <property name="hibernate.id.new_generator_mappings" value="true"/>
+                 <property name="hibernate.hbm2ddl.auto" value="none"/>
+             </properties>
+         </persistence-unit>
+     </persistence>
+     ```
+<br/>
+
+5. Column 데이터 타입으로 @Enumerated를 활용해 Enum을 쓸 때는 EnumType.ORDINAL을 쓰게 되면 각 enum들을 0, 1, 2 ... 순서대로 숫자로 DB에 저장하게 됨
    * 이렇게 되면 Enum 타입이 하나 중간에 추가되면 DB전체 데이터를 모두 바꿔야하는 상황이 되버리므로 EnumType.STRING으로 저장 필수!
    * Member.java
     ```java
