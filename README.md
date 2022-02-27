@@ -2,7 +2,7 @@
 
 ### 목차
 #### [1. JPA 소개](#JPA-소개)
-#### [2. Entity 내 각 컬럼 속성 관리 어노테이션 정리](#Entity-내-각-컬럼-속성관리-어노테이션-정리)
+#### [2. Entity 내 각 컬럼 속성 관리 어노테이션 정리](#Entity-내-각-컬럼-속성-관리-어노테이션-정리)
 #### [3. 연관관계 매핑 방법](#연관관계-매핑-방법)
 #### [4. JPA 사용 시 주의사항](#JPA-사용-시-주의사항)
 #### [5. 활용한 강의들](#활용한-강의들)
@@ -143,6 +143,78 @@ public class Member {
    * 결과
    <img src='src/main/resources/static/img/NotRelationMapping.png'/>
 <br/><br/><br/><br/>
+
+2. 연관관계 설정을 통해 해당 객체 자체를 가져와 활용하는 방법
+   1. @ManyToOne(단방향 관계) 매핑
+      * @JoinColumn을 활용해 Join할 객체의 PK값을 적어주어 FK 주입
+      * 1:N 관계 시에 사용되며 상위 객체에서는 하위 객체를 알 수 없고 하위 객체에서만 상위 객체를 조회 가능
+      * 아래 예시에서는 Team에 Player들이 속해 있으므로 Team이 상위 객체, Player가 하위 객체
+      * 따라서 Player에 ManyToOne으로 Team을 주입한 것을 볼 수 있음
+
+      * Player.java
+        ```java
+          @Entity
+          @Getter
+          @Setter
+          public class Player {
+              @Id @GeneratedValue(strategy = GenerationType.AUTO)
+              @Column(name = "PLAYER_ID")
+              private Long playerId;
+              @Column(name = "PLAYER_NAME")
+              private String playerName;
+              @ManyToOne
+              @JoinColumn(name = "TEAM_ID")
+              private Team team;
+          }
+        ```
+        
+      * Team.java
+        ```java
+          @Entity
+          @Getter
+          @Setter
+          public class Team {
+              @Id @GeneratedValue(strategy = GenerationType.AUTO)
+              @Column(name = "TEAM_ID")
+              private Long teamId;
+              @Column(name = "TEAM_NAME")
+              private String teamName;
+          }
+        ```
+        
+      * TestCode
+        ```java
+          @Test
+          void manyToOneRelationshipMapping(){
+            EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
+            EntityManager em = emf.createEntityManager();
+            EntityTransaction et = em.getTransaction();
+            et.begin();
+
+            try{
+              Team team = new Team();
+              team.setTeamName("필라델피아 식서스");
+              em.persist(team);
+              System.out.println("??");
+
+              Player player = new Player();
+              player.setPlayerName("제임스하든");
+              player.setTeam(team);
+              em.persist(player);
+              System.out.println("???");
+              et.commit();
+
+              Player newPlayer = em.find(Player.class, player.getPlayerId());
+              System.out.println("Player Team Name : " + newPlayer.getTeam().getTeamName());
+            } catch (Exception ex){
+              et.rollback();
+              System.err.println("Error Rollback : " + ex);
+            } finally {
+              em.close();
+              emf.close();
+            }
+          }
+        ```
 
 ### JPA 사용 시 주의사항
 1. EntityManagerFactory는 서버 실행 시 단일 인스턴스 후 전체 EntityManager 인스턴스 시 공유해 사용
