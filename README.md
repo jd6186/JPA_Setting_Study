@@ -473,7 +473,8 @@ public class Member {
       }
     ```
 <br/>
-5. DB랑 매핑할 필요는 없는데 해당 Domain에서 관리해야되는 변수가 존재할 때는 @Transient
+
+6. DB랑 매핑할 필요는 없는데 해당 Domain에서 관리해야되는 변수가 존재할 때는 @Transient
    * 예시
     ```java
       @Entity
@@ -503,7 +504,9 @@ public class Member {
           private String tempData;
       }
     ```
-6. 관계 매핑은 Lazy로 설정!
+<br/>
+    
+7. 관계 매핑은 Lazy로 설정!
    * 관계 매핑 시 fetchType은 EAGER, LAZY가 존재
       * EAGER : 데이터 조회 시 반드시 연관된 테이블을 Join하여 데이터 조회
       * LAZY : 연관된 테이블의 데이터를 조회할 때만 Join하여 데이터 조회(평시에는 조회 X)
@@ -525,7 +528,6 @@ public class Member {
             private Team team;
         }
       ```
- 
 <br/><br/><br/><br/>
 
 ### 활용한 강의들
