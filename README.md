@@ -45,8 +45,16 @@
         * 이렇게 만든 이유는 Java는 원래 객체를 다룰 때 이렇게 다루기 때문<br/>
           즉, 객체 내 값을 변경하는데 Update 쿼리 날리면서 변경하지 않기 때문에 여기서도 이런 기능을 만들어둔 것
 
-      * JPQL 쿼리 실행 시 자동으로 flush() 실행
-        * 자동으로 실행되므로 주의 필요
+      * JPQL 사용 가능 
+        * DB쿼리와 유사하며 객체지향 쿼리로써 특정 문법이 존재하며 각 방언(Mysql, Oracle DB, ...)에 관계없이 사용 가능
+        * 조회 시 결과값을 객체에 자동으로 매핑
+        * setMaxResult(index), setMinResult(index) 등을 지원하기 때문에 페이징 구성 시에도 유리
+        * fetch Join을 제공하여 LAZY타입의 컬럼들도 필요에 따라 EAGER타입으로 조회 가능
+          * fetch타입에 대한 자세한 설명은 아래 주의사항 파트에 나옴
+        * Named 쿼리 제공
+          * 컴파일 시 특정 쿼리를 실행해보고 오류가 발생하는지 않하는지 미리 알려주는 기능
+        * 쿼리 실행 시 자동으로 flush() 실행
+        * 쿼리 사용 시 테이블 뒤에는 반드시!!! Alias를 사용해야 함
 <br/><br/><br/><br/>
 
 ### Entity 내 각 컬럼 속성 관리 어노테이션 정리
@@ -375,7 +383,7 @@ public class Member {
             }
           }
         ```
-       
+<br/><br/><br/><br/>
 
 ### JPA 사용 시 주의사항
 1. EntityManagerFactory는 서버 실행 시 단일 인스턴스 후 전체 EntityManager 인스턴스 시 공유해 사용
@@ -391,6 +399,8 @@ public class Member {
 <br/>
 
 4. Build Tool이 Gradle일 때는 Entity로 활용할 Class들을 직접 등록해줘야 인식 가능
+   * 엄밀히 말하면 Spring Boot를 사용하면 이런 것들을 안 해줘도 상관 없지만 Spring Boot와 JPA는 엄연히 다른 프레임워크이기 때문에<br/>
+   src > main > resources > META-INF > persistence.xml 안에 아래 내용을 작성해 사용하는 것이 기본이며 Spring Boot에서도 해당 파일을 동일한 위치에 생성하여 튜닝이 가능함 
      ```
        <?xml version="1.0" encoding="UTF-8" ?>
        <persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence" version="2.2">
@@ -528,6 +538,14 @@ public class Member {
             private Team team;
         }
       ```
+      
+   * 만약 조회 시 연관관계 테이블 내용을 무조건 가져와야 하는 상황이면서 반복문을 통해 데이터를 조회해야한다면 라면?
+     * 반복문이 돌 때 마다 LAZY 로딩 상태에 놓이기 때문에 성능이 않 좋아짐
+     * JPQL 또는 QueryDSL 등을 사용하여 조회하는 것이 바람직
+     * JPQL에서는 fetch Join을 제공하기 때문에<br/>
+       select m from Member m join **fetch** m.team<br/>
+       위 쿼리와 같이 fetch Join을 사용 해 EAGER타입으로 테이블 Join 후 조회 가능
+       이렇게 되면 LAZY로딩이 발생하지 않음
 <br/><br/><br/><br/>
 
 ### 활용한 강의들
