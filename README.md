@@ -1,5 +1,13 @@
 # JPA_Setting_Study
 
+### 목차
+#### [1. JPA 소개](#JPA-소개)
+#### [2. Entity 내 각 컬럼 속성 관리 어노테이션 정리](#Entity-내-각-컬럼-속성관리-어노테이션-정리)
+#### [3. 연관관계 매핑 방법](#연관관계-매핑-방법)
+#### [4. JPA 사용 시 주의사항](#JPA-사용-시-주의사항)
+#### [5. 활용한 강의들](#활용한-강의들)
+
+
 ### JPA 소개
 * Java Persistence API의 약자로 객체 관계 매핑을 위한 POJO persistence Model을 제공하는 API
   * 관계형 데이터베이스와 매핑이 가능하며 매핑 정보를 기반으로 객체를 활용해 데이터 조회, 생성, 수정, 삭제 등의 작업이 가능
@@ -60,6 +68,80 @@ public class Member {
     private String tempData;
 }
 ```
+<br/><br/><br/><br/>
+
+### 연관관계 매핑 방법
+1. 연관관계 미설정 시 
+   * 저장 자체에는 문제가 없음<br/>
+   하지만 연관관계가 설정되어 있지 않아 조회 시에도 따로 두번 불러야만 조회 가능한 구조<br/>
+   너무 데이터 지향적인 코딩이며 객체 지향과는 어울리지 않는 코딩 방식<br/>
+   * Manager
+   ```
+   @Entity
+   @Getter
+   @Setter
+   public class Manager {
+       @Id @GeneratedValue(strategy = GenerationType.AUTO)
+       @Column(name = "MANAGER_ID")
+       private Long managerId;
+       @Column(name = "MANAGER_NAME")
+       private String managerName;
+       @Column(name = "TEAM_ID")
+       private Long teamId;
+   }
+
+   ```
+
+   * Team
+   ```
+   @Entity
+   @Getter
+   @Setter
+   public class Team {
+       @Id @GeneratedValue(strategy = GenerationType.AUTO)
+       private Long teamId;
+       private String teamName;
+   }
+   ```
+
+   * TestCode
+   ```
+   @Test
+   void tableRelationshipMapping(){
+    // 서버 실행 시 EntityManagerFactory는 한번만 실행
+    EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
+    EntityManager em1 = emf.createEntityManager();
+    EntityTransaction et1 = em1.getTransaction();
+    et1.begin();
+
+    // 아래 Try Catch블럭에 있는 방식으로도 조회는 가능 하지만 연관관계가 설정되어 있지 않아 조회 시에도 따로 두번 불러야만 조회 가능
+    try {
+       Team team = new Team();
+       team.setTeamName("리더스");
+       em1.persist(team);
+
+       Manager manager = new Manager();
+       manager.setManagerName("동욱");
+       manager.setTeamId(team.getTeamId());
+       em1.persist(manager);
+       et1.commit();
+
+       Team findOneTeam = em1.find(Team.class, team.getTeamId());
+       System.out.println("findOneTeam : " + findOneTeam.getTeamName()); // findOneTeam : 리더스
+       Manager findOneManager = em1.find(Manager.class, manager.getManagerId());
+       System.out.println("findOneManager : " + findOneManager.getManagerName()); // findOneManager : 동욱
+     } catch (Exception ex){
+       et1.rollback();
+       System.err.println("Error Rollback : " + ex);
+     } finally {
+       em1.close();
+       emf.close();
+     }
+   }
+   ```
+
+   * 결과
+   <img src='src/main/resources/static/img/NotRelationMapping.png'/>
 <br/><br/><br/><br/>
 
 ### JPA 사용 시 주의사항
