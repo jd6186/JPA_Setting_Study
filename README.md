@@ -2,7 +2,7 @@
 
 ### 목차
 #### [1. JPA 소개](#JPA-소개)
-#### [2. Entity 내 각 컬럼 속성 관리 어노테이션 정리](#Entity-내-각-컬럼-속성관리-어노테이션-정리)
+#### [2. Entity 내 각 컬럼 속성 관리 어노테이션 정리](#Entity-내-각-컬럼-속성-관리-어노테이션-정리)
 #### [3. 연관관계 매핑 방법](#연관관계-매핑-방법)
 #### [4. JPA 사용 시 주의사항](#JPA-사용-시-주의사항)
 #### [5. 활용한 강의들](#활용한-강의들)
@@ -71,12 +71,12 @@ public class Member {
 <br/><br/><br/><br/>
 
 ### 연관관계 매핑 방법
-1. 연관관계 미설정 시 
+#### 1. 연관관계 미설정 시 
    * 저장 자체에는 문제가 없음<br/>
    하지만 연관관계가 설정되어 있지 않아 조회 시에도 따로 두번 불러야만 조회 가능한 구조<br/>
    너무 데이터 지향적인 코딩이며 객체 지향과는 어울리지 않는 코딩 방식<br/>
    * Manager
-   ```
+   ```java
    @Entity
    @Getter
    @Setter
@@ -86,6 +86,7 @@ public class Member {
        private Long managerId;
        @Column(name = "MANAGER_NAME")
        private String managerName;
+       
        @Column(name = "TEAM_ID")
        private Long teamId;
    }
@@ -93,7 +94,7 @@ public class Member {
    ```
 
    * Team
-   ```
+   ```java
    @Entity
    @Getter
    @Setter
@@ -105,7 +106,7 @@ public class Member {
    ```
 
    * TestCode
-   ```
+   ```java
    @Test
    void tableRelationshipMapping(){
     // 서버 실행 시 EntityManagerFactory는 한번만 실행
@@ -144,6 +145,200 @@ public class Member {
    <img src='src/main/resources/static/img/NotRelationMapping.png'/>
 <br/><br/><br/><br/>
 
+#### 2. 연관관계 설정을 통해 해당 객체 자체를 가져와 매핑하는 방법(객체지향적인 )
+   1. @ManyToOne(단방향 관계) 매핑
+      * @JoinColumn을 활용해 Join할 객체의 PK값을 적어주어 FK 제약사항 설정<br/>
+        1:N 관계 시에 사용되며 상위 객체에서는 하위 객체를 알 수 없고 하위 객체에서만 상위 객체를 조회 가능<br/>
+        아래 예시에서는 Team에 Player들이 속해 있으므로 Team이 상위 객체, Player가 하위 객체<br/>
+        따라서 Player에 ManyToOne으로 Team을 주입한 것을 볼 수 있음
+        
+      > 이를 통해 연관관계를 설정하지 않았을 때와 다르게 이번에는 *Player만 조회하면 매핑된 Team을 조회 가능*
+
+      * Player.java
+        ```java
+          @Entity
+          @Getter
+          @Setter
+          public class Player {
+              @Id @GeneratedValue(strategy = GenerationType.AUTO)
+              @Column(name = "PLAYER_ID")
+              private Long playerId;
+              @Column(name = "PLAYER_NAME")
+              private String playerName;
+              @ManyToOne(fetch = FetchType.LAZY)
+              @JoinColumn(name = "TEAM_ID")
+              private Team team;
+          }
+        ```
+        
+      * Team.java
+        ```java
+          @Entity
+          @Getter
+          @Setter
+          public class Team {
+              @Id @GeneratedValue(strategy = GenerationType.AUTO)
+              @Column(name = "TEAM_ID")
+              private Long teamId;
+              @Column(name = "TEAM_NAME")
+              private String teamName;
+          }
+        ```
+        
+      * TestCode
+        ```java
+          @Test
+          void manyToOneRelationshipMapping(){
+            EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
+            EntityManager em = emf.createEntityManager();
+            EntityTransaction et = em.getTransaction();
+            et.begin();
+
+            try{
+              Team team = new Team();
+              team.setTeamName("필라델피아 식서스");
+              em.persist(team);
+              System.out.println("??");
+
+              Player player = new Player();
+              player.setPlayerName("제임스하든");
+              player.setTeam(team);
+              em.persist(player);
+              System.out.println("???");
+              et.commit();
+
+              Player newPlayer = em.find(Player.class, player.getPlayerId());
+              System.out.println("Player Team Name : " + newPlayer.getTeam().getTeamName());
+            } catch (Exception ex){
+              et.rollback();
+              System.err.println("Error Rollback : " + ex);
+            } finally {
+              em.close();
+              emf.close();
+            }
+          }
+        ```
+<br/><br/>
+
+   2. @ManyToOne, @OneToMany(양방향 관계) 매핑
+      * *들어가기전 인지해야 하는 부분*
+        > 개발 전 설계 시 **단방향 매핑**으로 설계를 끝내는 것이 바람직<br/>
+          추후 필요에 따라 양방향 연결은 가능하나 단순히 조회 편의성만 제공할 뿐<br/>
+          DB 내부적으로는 순환구조를 만들기 때문에 조회 성능 자체는 떨어짐
+
+      * 1:N 관계에서 **상위 객체와 연관된 모든 하위 객체를 조회**해야 하는 경우가 존재
+      * 이 때 사용하는 어노테이션이 바로 OneToMany 즉, 하나를 조회해서 여러개를 조회하는 용도
+      * 여기서 중요한 부분은 바로 @OneToMany 내 작성되는 **mappedBy**라는 속성값
+        * mappedBy를 사용하는 이유는 관계형 데이터베이스와 Java 객체가 가지는 차이점 때문
+        * DB에는 하위 객체인 Stadium 테이블과 상위 객체인 Team테이블을 아무리 조인해도 각각은 단일 값으로 유지되지만<br/> 
+          Java에서는 Stadium객체를 여러번 인스턴스하면 모두 다른 객체가 생성되고 이에 따라 FK도 여러종류가 생성<br/>
+          이렇게 되면 Team 객체 입장에서는 어떤 외래키가 진짜 외래키인지 알 수가 없음. 이 때문에 등장한 개념이 **'연관관계의 주인'**
+          * *연관관계의 주인*
+            * 객체의 두 관계중(1:N) 하나를 연관관계의 주인으로 명시적으로 지정
+            * 연관관계의 **주인만이 외래키를 관리**(등록/수정)
+            * 주인이 아닌쪽은 다순 읽기만 가능
+            * **주인은 MappedBy 속성 사용 X**
+            * **주인이 아니면 MappedBy 속성으로 주인 지정**
+         * 주인 지정 가이드
+           * **FK가 들어가 있는 하위 객체**를 주인 테이블로 지정하는 것이 바람직
+           * 상위 객체를 주인으로 지정 시 **연관된 다른 테이블들에 영향이 갈 수 있음**
+         * 주인이 지정되고 난 후 주의사항
+           * 주인이 아닌 객체에서 값을 넣을 시 주인에서는 해당 값을 인지할 수 없어 FK값이 Null이 됨
+           * 이 때문에 Null Point Exception이 자주 발생하므로 반드시 주의 필요
+           * 그래서! 그냥 양쪽다 넣어두면 사실 문제될 부분이 없으므로 JPA Programming 저자 김영한님은 하위 객체, 상위 객체 **양쪽 모두에 값을 넣는 것을 추천**<br/>
+             객체 입장에서 보면 당연히 값을 넣어주는게 사실은 맞기 때문에 객체지향적인 설계에도 위반되는 내용은 아님
+      * 예시
+        * Stadium.java
+        ```java
+          @Entity
+          @Getter
+          @Setter
+          public class Stadium {
+              @Id @GeneratedValue(strategy = GenerationType.AUTO)
+              @Column(name = "STADIUM_ID")
+              private Long stadiumId;
+              @Column(name = "STADIUM_NAME")
+              private String stadiumName;
+              @ManyToOne
+              @JoinColumn(name = "TEAM_ID")
+              private Team team;
+          }
+        ```
+        
+        * Team.java
+        ```java
+          @Entity
+          @Getter
+          @Setter
+          public class Team {
+              @Id @GeneratedValue(strategy = GenerationType.AUTO)
+              @Column(name = "TEAM_ID")
+              private Long teamId;
+              @Column(name = "TEAM_NAME")
+              private String teamName;
+
+              @OneToMany(mappedBy = "team")
+              // 매핑 시 반드시 mappedBy 기재 필수, new ArrayList<>() 기재 필수!
+              private List<Stadium> stadiums = new ArrayList<>();
+          }
+        ```
+        
+        * TestCode
+        ```java
+          @Test
+          void manyToOneMultiRelationshipMapping(){
+            EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
+            EntityManager em = emf.createEntityManager();
+            EntityTransaction et = em.getTransaction();
+            et.begin();
+
+            try{
+              Team team = new Team();
+              team.setTeamName("필라델피아 식서스");
+              em.persist(team);
+              System.out.println("??");
+
+              // Persist는 Entity Manager가 파라미터에 입력된 객체를 관리하도록 등록만 한 상태
+              Stadium stadium1 = new Stadium();
+              stadium1.setStadiumName("뉴욕 경기장");
+              stadium1.setTeam(team);
+              em.persist(stadium1);
+
+              Stadium stadium2 = new Stadium();
+              stadium2.setStadiumName("필라델피아 경기장");
+              stadium2.setTeam(team);
+              em.persist(stadium2);
+
+              // team객체에 stadium객체들 add
+              // 오류를 줄이기 위해 작성할 뿐 사실 주인 객체인 team객체를 생성할 때 이미 반영됨
+              team.getStadiums().add(stadium1);
+              team.getStadiums().add(stadium2);
+
+              // flush를 통해 EntityManager에 등록된 테이블에 실제 저장될 데이터 영속화
+              // 이 과정이 빠지면 데이터 Select 해도 저장된 결과가 없음
+              em.flush();
+              em.clear();
+              et.commit();
+
+              // 저장된 데이터 조회
+              Stadium newStadium1 = em.find(Stadium.class, stadium2.getStadiumId());
+              Team tempTeam = newStadium1.getTeam();
+              List<Stadium> stadiums = tempTeam.getStadiums();
+              stadiums.forEach((stadi)->{
+               System.out.println("S_ID : " + stadi.getStadiumId() + "\nS_NAME : " + stadi.getStadiumName());
+              });
+
+            } catch (Exception ex){
+              et.rollback();
+              System.err.println("Error Rollback : " + ex);
+            } finally {
+              em.close();
+              emf.close();
+            }
+          }
+        ```
+       
+
 ### JPA 사용 시 주의사항
 1. EntityManagerFactory는 서버 실행 시 단일 인스턴스 후 전체 EntityManager 인스턴스 시 공유해 사용
    * 관계형 데이터베이스와 Connection 연결하는 부분이므로 여러번 할 필요가 없음
@@ -159,32 +354,32 @@ public class Member {
 
 4. Build Tool이 Gradle일 때는 Entity로 활용할 Class들을 직접 등록해줘야 인식 가능
      ```
-     <?xml version="1.0" encoding="UTF-8" ?>
-     <persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence" version="2.2">
-         <persistence-unit name="jpa_setting_study">
-             <!-- Gradle로 빌드 시에는 사용할 Entity를 등록해 줘야함 -->
-             <class>com.study.jpa_setting_study.admin.member.domain.Member</class>
-             <class>com.study.jpa_setting_study.admin.manager.domain.Manager</class>
-             <class>com.study.jpa_setting_study.admin.manager.domain.Team</class>
+       <?xml version="1.0" encoding="UTF-8" ?>
+       <persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence" version="2.2">
+           <persistence-unit name="jpa_setting_study">
+               <!-- Gradle로 빌드 시에는 사용할 Entity를 등록해 줘야함 -->
+               <class>com.study.jpa_setting_study.admin.member.domain.Member</class>
+               <class>com.study.jpa_setting_study.admin.manager.domain.Manager</class>
+               <class>com.study.jpa_setting_study.admin.manager.domain.Team</class>
 
-             <!-- DB연결 속성값들 -->
-             <properties>
-                 <!-- 함수 속성 -->
-                 <property name="javax.persistence.jdbc.driver" value="org.h2.Driver"/>
-                 <property name="javax.persistence.jdbc.user" value="amway"/>
-                 <property name="javax.persistence.jdbc.password" value="1234"/>
-                 <property name="javax.persistence.jdbc.url" value="jdbc:h2:tcp://localhost/~/test"/>
-                 <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
+               <!-- DB연결 속성값들 -->
+               <properties>
+                   <!-- 함수 속성 -->
+                   <property name="javax.persistence.jdbc.driver" value="org.h2.Driver"/>
+                   <property name="javax.persistence.jdbc.user" value="amway"/>
+                   <property name="javax.persistence.jdbc.password" value="1234"/>
+                   <property name="javax.persistence.jdbc.url" value="jdbc:h2:tcp://localhost/~/test"/>
+                   <property name="hibernate.dialect" value="org.hibernate.dialect.H2Dialect"/>
 
-                 <!-- 옵션 -->
-                 <property name="hibernate.show_sql" value="true"/>
-                 <property name="hibernate.format_sql" value="true"/>
-                 <property name="hibernate.use_sql_comments" value="true"/>
-                 <property name="hibernate.id.new_generator_mappings" value="true"/>
-                 <property name="hibernate.hbm2ddl.auto" value="none"/>
-             </properties>
-         </persistence-unit>
-     </persistence>
+                   <!-- 옵션 -->
+                   <property name="hibernate.show_sql" value="true"/>
+                   <property name="hibernate.format_sql" value="true"/>
+                   <property name="hibernate.use_sql_comments" value="true"/>
+                   <property name="hibernate.id.new_generator_mappings" value="true"/>
+                   <property name="hibernate.hbm2ddl.auto" value="none"/>
+               </properties>
+           </persistence-unit>
+       </persistence>
      ```
 <br/>
 
@@ -243,33 +438,109 @@ public class Member {
 5. DB랑 매핑할 필요는 없는데 해당 Domain에서 관리해야되는 변수가 존재할 때는 @Transient
    * 예시
     ```java
-    @Entity
-    @Getter
-    @Setter
-    public class Member {
-        @Id
-        private Long id;
-        private String name;
+      @Entity
+      @Getter
+      @Setter
+      public class Member {
+          @Id
+          private Long id;
+          private String name;
 
-        // EnumType.ORDINAL로 하면 index번호가 들어가버리므로 추후 수정 시 데이터 정합성이 오류가 생김
-        // 따라서 EnumType은 STRING으로 해야 함(변수타입명이 그대로 들어감)
-        @Enumerated(EnumType.STRING)
-        private MemberType memberType;
+          // EnumType.ORDINAL로 하면 index번호가 들어가버리므로 추후 수정 시 데이터 정합성이 오류가 생김
+          // 따라서 EnumType은 STRING으로 해야 함(변수타입명이 그대로 들어감)
+          @Enumerated(EnumType.STRING)
+          private MemberType memberType;
 
-        //DB 내 Column명을 java 변수명 말고 따로 관리하고자할 때 활용
-        @Column(name = "PHONE_NUMBER")
-        private String user_phone_member;
+          //DB 내 Column명을 java 변수명 말고 따로 관리하고자할 때 활용
+          @Column(name = "PHONE_NUMBER")
+          private String user_phone_member;
 
-        // 날짜 타입은 @Temporal 사용
-        // DATE: 날짜, TIME: 시간, TIMESTAMP: 날짜와 시간
-        @Temporal(TemporalType.DATE)
-        private String reg_date;
+          // 날짜 타입은 @Temporal 사용
+          // DATE: 날짜, TIME: 시간, TIMESTAMP: 날짜와 시간
+          @Temporal(TemporalType.DATE)
+          private String reg_date;
 
-        // DB랑 매핑할 필요는 없는데 해당 Domain에서 관리해야되는 변수가 존재할 때는 @Transient
-        @Transient
-        private String tempData;
-    }
+          // DB랑 매핑할 필요는 없는데 해당 Domain에서 관리해야되는 변수가 존재할 때는 @Transient
+          @Transient
+          private String tempData;
+      }
     ```
+6. 관계 매핑은 Lazy로 설정!
+   * 관계 매핑 시 fetchType은 EAGER, LAZY가 존재
+      * EAGER : 데이터 조회 시 반드시 연관된 테이블을 Join하여 데이터 조회
+      * LAZY : 연관된 테이블의 데이터를 조회할 때만 Join하여 데이터 조회(평시에는 조회 X)
+   * 때문에 LAZY로 설정하는 것이 보편적인 상황에서는 무조건 성능상 유리!
+   * 예시
+      ```
+        @Entity
+        @Getter
+        @Setter
+        public class Player {
+            @Id @GeneratedValue(strategy = GenerationType.AUTO)
+            @Column(name = "PLAYER_ID")
+            private Long playerId;
+            @Column(name = "PLAYER_NAME")
+            private String playerName;
+            
+            @ManyToOne(fetch = FetchType.LAZY)
+            @JoinColumn(name = "TEAM_ID")
+            private Team team;
+        }
+      ```
+      
+7. persist로 등록된 객체에 데이터를 영속화 시키기 위해서는 flush() 메서드를 반드시 사용
+   * 이 과정이 빠지면 데이터 Select 해도 저장된 결과가 없음 
+   * 예시
+     ```java
+       @Test
+       void manyToOneMultiRelationshipMapping(){
+         EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
+         EntityManager em = emf.createEntityManager();
+         EntityTransaction et = em.getTransaction();
+         et.begin();
+
+         try{
+           Team team = new Team();
+           team.setTeamName("필라델피아 식서스");
+           em.persist(team);
+           System.out.println("??");
+
+           Stadium stadium1 = new Stadium();
+           stadium1.setStadiumName("뉴욕 경기장");
+           stadium1.setTeam(team);
+
+           Stadium stadium2 = new Stadium();
+           stadium2.setStadiumName("필라델피아 경기장");
+           stadium2.setTeam(team);
+
+           // Persist는 Entity Manager가 파라미터에 입력된 객체를 관리하도록 등록만 한 상태
+           em.persist(stadium1);
+           em.persist(stadium2);
+
+           // flush를 통해 EntityManager에 등록된 테이블에 실제 저장될 데이터 영속화 시키기
+           em.flush();
+           em.clear();
+
+           // Transaction 처리
+           et.commit();
+
+           // 저장된 데이터 조회
+           Stadium newStadium1 = em.find(Stadium.class, stadium2.getStadiumId());
+           Team tempTeam = newStadium1.getTeam();
+           List<Stadium> stadiums = tempTeam.getStadiums();
+           for (Stadium sta : stadiums){
+              System.out.println("S_ID : " + sta.getStadiumId() + "\n" + "S_Name : " + sta.getStadiumName());
+           }
+         } catch (Exception ex){
+           et.rollback();
+           System.err.println("Error Rollback : " + ex);
+         } finally {
+           em.close();
+           emf.close();
+         }
+       }
+     ```
+8. 
 <br/><br/><br/><br/>
 
 ### 활용한 강의들
