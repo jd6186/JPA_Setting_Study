@@ -314,12 +314,6 @@ public class Member {
               team.getStadiums().add(stadium1);
               team.getStadiums().add(stadium2);
 
-              // flush를 통해 EntityManager에 등록된 테이블에 실제 저장될 데이터 영속화
-              // 이 과정이 빠지면 데이터 Select 해도 저장된 결과가 없음
-              em.flush();
-              em.clear();
-              et.commit();
-
               // 저장된 데이터 조회
               Stadium newStadium1 = em.find(Stadium.class, stadium2.getStadiumId());
               Team tempTeam = newStadium1.getTeam();
@@ -328,6 +322,8 @@ public class Member {
                System.out.println("S_ID : " + stadi.getStadiumId() + "\nS_NAME : " + stadi.getStadiumName());
               });
 
+              // Transaction 처리
+              et.commit();
             } catch (Exception ex){
               et.rollback();
               System.err.println("Error Rollback : " + ex);
@@ -487,62 +483,7 @@ public class Member {
             private Team team;
         }
       ```
-      
-7. flush 사용 필요
-   * persist를 통해 영속성을 만들었다는 것은 개념적인 표현이지 물리적인 것이 아닌 상태
-   * 따라서 물리적으로 해당 데이터를 저장하기 위해서는 flush를 통해 데이터를 밀어 넣어줘야함
-   * 이 과정이 빠지면 데이터 Select 해도 저장된 결과가 없음
-   * 예시
-     ```java
-       @Test
-       void manyToOneMultiRelationshipMapping(){
-         EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
-         EntityManager em = emf.createEntityManager();
-         EntityTransaction et = em.getTransaction();
-         et.begin();
-
-         try{
-           Team team = new Team();
-           team.setTeamName("필라델피아 식서스");
-           em.persist(team);
-
-           // Persist는 Entity Manager가 파라미터에 입력된 객체를 관리하도록 등록만 한 상태
-           Stadium stadium1 = new Stadium();
-           stadium1.setStadiumName("뉴욕 경기장");
-           stadium1.setTeam(team);
-
-           Stadium stadium2 = new Stadium();
-           stadium2.setStadiumName("필라델피아 경기장");
-           stadium2.setTeam(team);
-           
-           // 논리적 데이터 저장
-           em.persist(stadium1);
-           em.persist(stadium2);
-
-           // 물리적인 데이터 저장
-           em.flush();
-           em.clear();
-
-           // Transaction 처리
-           et.commit();
-
-           // 저장된 데이터 조회
-           Stadium newStadium1 = em.find(Stadium.class, stadium2.getStadiumId());
-           Team tempTeam = newStadium1.getTeam();
-           List<Stadium> stadiums = tempTeam.getStadiums();
-           stadiums.forEach((stadi)->{
-             System.out.println("S_ID : " + stadi.getStadiumId() + "\nS_NAME : " + stadi.getStadiumName());
-           });
-         } catch (Exception ex){
-           et.rollback();
-           System.err.println("Error Rollback : " + ex);
-         } finally {
-           em.close();
-           emf.close();
-         }
-       }
-     ```
-8. 
+ 
 <br/><br/><br/><br/>
 
 ### 활용한 강의들
