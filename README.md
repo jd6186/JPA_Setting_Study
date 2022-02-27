@@ -488,8 +488,10 @@ public class Member {
         }
       ```
       
-7. persist로 등록된 객체에 데이터를 영속화 시키기 위해서는 flush() 메서드를 반드시 사용
-   * 이 과정이 빠지면 데이터 Select 해도 저장된 결과가 없음 
+7. flush 사용 필요
+   * persist를 통해 영속성을 만들었다는 것은 개념적인 표현이지 물리적인 것이 아닌 상태
+   * 따라서 물리적으로 해당 데이터를 저장하기 위해서는 flush를 통해 데이터를 밀어 넣어줘야함
+   * 이 과정이 빠지면 데이터 Select 해도 저장된 결과가 없음
    * 예시
      ```java
        @Test
@@ -503,8 +505,8 @@ public class Member {
            Team team = new Team();
            team.setTeamName("필라델피아 식서스");
            em.persist(team);
-           System.out.println("??");
 
+           // Persist는 Entity Manager가 파라미터에 입력된 객체를 관리하도록 등록만 한 상태
            Stadium stadium1 = new Stadium();
            stadium1.setStadiumName("뉴욕 경기장");
            stadium1.setTeam(team);
@@ -512,12 +514,12 @@ public class Member {
            Stadium stadium2 = new Stadium();
            stadium2.setStadiumName("필라델피아 경기장");
            stadium2.setTeam(team);
-
-           // Persist는 Entity Manager가 파라미터에 입력된 객체를 관리하도록 등록만 한 상태
+           
+           // 논리적 데이터 저장
            em.persist(stadium1);
            em.persist(stadium2);
 
-           // flush를 통해 EntityManager에 등록된 테이블에 실제 저장될 데이터 영속화 시키기
+           // 물리적인 데이터 저장
            em.flush();
            em.clear();
 
@@ -528,9 +530,9 @@ public class Member {
            Stadium newStadium1 = em.find(Stadium.class, stadium2.getStadiumId());
            Team tempTeam = newStadium1.getTeam();
            List<Stadium> stadiums = tempTeam.getStadiums();
-           for (Stadium sta : stadiums){
-              System.out.println("S_ID : " + sta.getStadiumId() + "\n" + "S_Name : " + sta.getStadiumName());
-           }
+           stadiums.forEach((stadi)->{
+             System.out.println("S_ID : " + stadi.getStadiumId() + "\nS_NAME : " + stadi.getStadiumName());
+           });
          } catch (Exception ex){
            et.rollback();
            System.err.println("Error Rollback : " + ex);
