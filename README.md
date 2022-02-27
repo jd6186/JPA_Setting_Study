@@ -76,7 +76,7 @@ public class Member {
    하지만 연관관계가 설정되어 있지 않아 조회 시에도 따로 두번 불러야만 조회 가능한 구조<br/>
    너무 데이터 지향적인 코딩이며 객체 지향과는 어울리지 않는 코딩 방식<br/>
    * Manager
-   ```
+   ```java
    @Entity
    @Getter
    @Setter
@@ -93,7 +93,7 @@ public class Member {
    ```
 
    * Team
-   ```
+   ```java
    @Entity
    @Getter
    @Setter
@@ -105,7 +105,7 @@ public class Member {
    ```
 
    * TestCode
-   ```
+   ```java
    @Test
    void tableRelationshipMapping(){
     // 서버 실행 시 EntityManagerFactory는 한번만 실행
@@ -144,12 +144,13 @@ public class Member {
    <img src='src/main/resources/static/img/NotRelationMapping.png'/>
 <br/><br/><br/><br/>
 
-2. 연관관계 설정을 통해 해당 객체 자체를 가져와 활용하는 방법
+2. 연관관계 설정을 통해 해당 객체 자체를 가져와 매핑하는 방법(객체지향적인 )
    1. @ManyToOne(단방향 관계) 매핑
       * @JoinColumn을 활용해 Join할 객체의 PK값을 적어주어 FK 주입<br/>
         1:N 관계 시에 사용되며 상위 객체에서는 하위 객체를 알 수 없고 하위 객체에서만 상위 객체를 조회 가능<br/>
         아래 예시에서는 Team에 Player들이 속해 있으므로 Team이 상위 객체, Player가 하위 객체<br/>
         따라서 Player에 ManyToOne으로 Team을 주입한 것을 볼 수 있음
+      * 이를 통해 연관관계를 설정하지 않았을 때와 다르게 이번에는 <span style="background-color:yellow;">Player만 조회하면 연관된 Team을 조회 가능</span>
 
       * Player.java
         ```java
