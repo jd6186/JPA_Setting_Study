@@ -14,6 +14,32 @@
   * 이를 통해 더 이상 개발자들이 SQL문을 작성하는데 불필요한 시간을 줄여주고 핵심 로직을 개발하는데 시간을 사용할 수 있게 함으로써 개발 효율성 향상
   * DB 마이그레이션 시에도 원하는 관계형 데이터베이스 정보만 속성 값에서 변경해주면 JPA가 알아서 해당 DB에 맞게 매핑하기 때문에 마이그레이션 시간도 단축 가능
 * 기존에는 EJB 전문가 그룹에 의해 개발되었지만 추후 웹 애플리케이션 및 애플리케이션 클라이언트가 직접하숑할 수 있게 Java EE, Java SE 등에서도 사용 가능해진 상태
+* 영속성이란?
+  * 여러 Entity(DB로 치면 Table)객체들을 EntityManager에 등록해 관리하는 상태
+  * EntityManager 객체의 persist Method를 통해 영속성 등록 가능
+* 영속성 등록 시 EntityManager에 의해 관리되는 기능들
+  * 1차 Cache 지원
+    * 등록 시 내부적으로 Cache가 되며 이를 통해 저장된 데이터 조회 가능
+    * 이 때문에 빠른 데이터 조회가 가능. 만약 데이터가 없다면 그 때 DB에서 데이터 조회
+    * 다만 EntityManager를 통해 생성한 Transaction 객체가 close되기 전까지 thread 하나에서 임시로 저장하는 cache이기 때문에 주의 필요
+    * 만약 1차 Cache에만 저장하지 않고 DB에 바로 동기화해야 한다면 EntityManager의 flush() 메서드를 활용하면 됨
+    * transaction 객체의 commit() 메서드가 **여러 EntityManager의 SQL들을 말아두었던 것들 모두를 flush()**하고 DB에 commit하는 것이라고 보면 됨
+      * 이 때 **1차 Cache가 지워지는 것이 아니라 말아두었던 SQL만 DB로 보내는 것**
+    * 그럼 1차 Cache를 다 지우고 싶다면? EntityManager 내 clear() 메서드를 활용하면 됨
+    * persist만 한 상태에서 flush()나 commit()을 안 하고 clear() 또는 close()를 해버리면 이는 준영속상태에서 **DB와 동기화되지 않고 삭제됨**
+      * 문제는 주로 연관관계 매핑을 할 때 FetchType을 LAZY로 해야하는데<br/>
+        이 **LAZY 모드는 1차 Cache를 기반**으로하기 때문에 clear()를 잘못해 버리면 여기서 에러가 발생함 **반드시 주의 필요**
+
+  * 변경감지(Drity Check) 기능 제공
+    * 값을 바꾸고 싶을 때 우선 조회를 하게 되는데 조회 시 이미 실제 DB에 있던 데이터가 1차 Cache에 저장됨
+    * 이후 변경을 원해서 setter를 이용해 값을 바꾸게 되면 EntityManager가 이를 감지하고(스냅샷 메모리가 따로 있어서 변경되면 감지 가능) commit 시 update문을 날리게 됨
+    * 왜냐하면 사용자가 조회한 그 1차 Cache 내 데이터가 사용자가 설정한 가장 최근 데이터이므로 이 값이 변경되었다면 DB의 값도 변경해야 하기 때문
+    * 따라서 따로 update()같은 메서드는 존재하지도 않고 유저가 알 필요도 없음
+    * 이렇게 만든 이유는 Java는 원래 객체를 다룰 때 이렇게 다루기 때문<br/>
+      즉, 객체 내 값을 변경하는데 Update 쿼리 날리면서 변경하지 않기 때문에 여기서도 이런 기능을 만들어둔 것
+
+  * JPQL 쿼리 실행 시 자동으로 flush() 실행
+    * 자동으로 실행되므로 주의 필요
 <br/><br/><br/><br/>
 
 ### Entity 내 각 컬럼 속성 관리 어노테이션 정리
@@ -145,7 +171,7 @@ public class Member {
    <img src='src/main/resources/static/img/NotRelationMapping.png'/>
 <br/><br/><br/><br/>
 
-#### 2. 연관관계 설정을 통해 해당 객체 자체를 가져와 매핑하는 방법(객체지향적인 )
+#### 2. 연관관계 설정을 통해 해당 객체 자체를 가져와 매핑하는 방법
    1. @ManyToOne(단방향 관계) 매핑
       * @JoinColumn을 활용해 Join할 객체의 PK값을 적어주어 FK 제약사항 설정<br/>
         1:N 관계 시에 사용되며 상위 객체에서는 하위 객체를 알 수 없고 하위 객체에서만 상위 객체를 조회 가능<br/>
@@ -222,7 +248,7 @@ public class Member {
 
    2. @ManyToOne, @OneToMany(양방향 관계) 매핑
       * *들어가기전 인지해야 하는 부분*
-        > 개발 전 설계 시 **단방향 매핑**으로 설계를 끝내는 것이 바람직<br/>
+        > 개발 전 설계 시 **단방향 매핑**으로 이미 연관관계 매핑은 끝난 것이므로 여기서 설계를 끝내는 것이 바람직<br/>
           추후 필요에 따라 양방향 연결은 가능하나 단순히 조회 편의성만 제공할 뿐<br/>
           DB 내부적으로는 순환구조를 만들기 때문에 조회 성능 자체는 떨어짐
 
@@ -314,12 +340,6 @@ public class Member {
               team.getStadiums().add(stadium1);
               team.getStadiums().add(stadium2);
 
-              // flush를 통해 EntityManager에 등록된 테이블에 실제 저장될 데이터 영속화
-              // 이 과정이 빠지면 데이터 Select 해도 저장된 결과가 없음
-              em.flush();
-              em.clear();
-              et.commit();
-
               // 저장된 데이터 조회
               Stadium newStadium1 = em.find(Stadium.class, stadium2.getStadiumId());
               Team tempTeam = newStadium1.getTeam();
@@ -328,6 +348,8 @@ public class Member {
                System.out.println("S_ID : " + stadi.getStadiumId() + "\nS_NAME : " + stadi.getStadiumName());
               });
 
+              // Transaction 처리
+              et.commit();
             } catch (Exception ex){
               et.rollback();
               System.err.println("Error Rollback : " + ex);
@@ -487,60 +509,7 @@ public class Member {
             private Team team;
         }
       ```
-      
-7. persist로 등록된 객체에 데이터를 영속화 시키기 위해서는 flush() 메서드를 반드시 사용
-   * 이 과정이 빠지면 데이터 Select 해도 저장된 결과가 없음 
-   * 예시
-     ```java
-       @Test
-       void manyToOneMultiRelationshipMapping(){
-         EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
-         EntityManager em = emf.createEntityManager();
-         EntityTransaction et = em.getTransaction();
-         et.begin();
-
-         try{
-           Team team = new Team();
-           team.setTeamName("필라델피아 식서스");
-           em.persist(team);
-           System.out.println("??");
-
-           Stadium stadium1 = new Stadium();
-           stadium1.setStadiumName("뉴욕 경기장");
-           stadium1.setTeam(team);
-
-           Stadium stadium2 = new Stadium();
-           stadium2.setStadiumName("필라델피아 경기장");
-           stadium2.setTeam(team);
-
-           // Persist는 Entity Manager가 파라미터에 입력된 객체를 관리하도록 등록만 한 상태
-           em.persist(stadium1);
-           em.persist(stadium2);
-
-           // flush를 통해 EntityManager에 등록된 테이블에 실제 저장될 데이터 영속화 시키기
-           em.flush();
-           em.clear();
-
-           // Transaction 처리
-           et.commit();
-
-           // 저장된 데이터 조회
-           Stadium newStadium1 = em.find(Stadium.class, stadium2.getStadiumId());
-           Team tempTeam = newStadium1.getTeam();
-           List<Stadium> stadiums = tempTeam.getStadiums();
-           for (Stadium sta : stadiums){
-              System.out.println("S_ID : " + sta.getStadiumId() + "\n" + "S_Name : " + sta.getStadiumName());
-           }
-         } catch (Exception ex){
-           et.rollback();
-           System.err.println("Error Rollback : " + ex);
-         } finally {
-           em.close();
-           emf.close();
-         }
-       }
-     ```
-8. 
+ 
 <br/><br/><br/><br/>
 
 ### 활용한 강의들
