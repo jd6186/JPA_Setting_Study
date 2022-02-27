@@ -8,7 +8,7 @@
 * 기존에는 EJB 전문가 그룹에 의해 개발되었지만 추후 웹 애플리케이션 및 애플리케이션 클라이언트가 직접하숑할 수 있게 Java EE, Java SE 등에서도 사용 가능해진 상태
 <br/><br/><br/><br/>
 
-### 각 컬럼 속성 관리 어노테이션 정리
+### Entity 내 각 컬럼 속성 관리 어노테이션 정리
 #### 종류
 1. @Id - 해당 Table의 Primary Key 컬럼 위에 사용. 무조건 있어야 하며 없을 시 오류 발생
    * @GeneratedValue
@@ -62,7 +62,7 @@ public class Member {
 ```
 <br/><br/><br/><br/>
 
-### 주의사항
+### JPA 사용 시 주의사항
 1. EntityManagerFactory는 서버 실행 시 단일 인스턴스 후 전체 EntityManager 인스턴스 시 공유해 사용
    * 관계형 데이터베이스와 Connection 연결하는 부분이므로 여러번 할 필요가 없음
 <br/>
