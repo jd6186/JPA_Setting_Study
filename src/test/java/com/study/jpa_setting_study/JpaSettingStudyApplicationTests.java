@@ -172,14 +172,9 @@ class JpaSettingStudyApplicationTests {
 			team.getStadiums().add(stadium1);
 			team.getStadiums().add(stadium2);
 
-			// flush를 통해 EntityManager에 등록된 테이블에 실제 저장될 데이터 영속화 시키기
-			// 이 과정이 빠지면 데이터 Select 해도 저장된 결과가 없음
-			em.flush();
-			em.clear();
-
 			// Transaction 처리
 			et.commit();
-			
+
 			// 저장된 데이터 조회
 			Stadium newStadium1 = em.find(Stadium.class, stadium2.getStadiumId());
 			Team tempTeam = newStadium1.getTeam();
