@@ -73,29 +73,35 @@ class JpaSettingStudyApplicationTests {
 	void tableRelationshipMapping(){
 		// 서버 실행 시 EntityManagerFactory는 한번만 실행
 		EntityManagerFactory emf = Persistence.createEntityManagerFactory("jpa_setting_study");
-		EntityManager em = emf.createEntityManager();
-		EntityTransaction et = em.getTransaction();
-		et.begin();
+		EntityManager em1 = emf.createEntityManager();
+		EntityTransaction et1 = em1.getTransaction();
+		et1.begin();
 
-		// 아래 Try Catch블럭에 있는 방식으로도 조회는 가능 하지만 연관관계가 설정되어 있지 않아 조회 시에도 따로 두번 불러야만 조회 가능
+		// 아래 Try Catch블럭에 있는 방식으로도 조회는 가능
+		// 하지만 연관관계가 설정되어 있지 않아 조회 시에도 따로 두번 불러야만 조회 가능한 구조
+		// 너무 데이터 지향적인 코딩이며 객체 지향과는 어울리지 않는 코딩 방식
 		try {
 			Team team = new Team();
 			team.setTeamName("리더스");
-			em.persist(team);
+			em1.persist(team);
 
 			Manager manager = new Manager();
 			manager.setManagerName("동욱");
 			manager.setTeamId(team.getTeamId());
-			em.persist(manager);
-			
-			et.commit();
+			em1.persist(manager);
+			et1.commit();
+
+			Team findOneTeam = em1.find(Team.class, team.getTeamId());
+			System.out.println("findOneTeam : " + findOneTeam.getTeamName());
+			Manager findOneManager = em1.find(Manager.class, manager.getManagerId());
+			System.out.println("findOneManager : " + findOneManager.getManagerName());
+
 		} catch (Exception ex){
-			et.rollback();
+			et1.rollback();
 			System.err.println("Error Rollback : " + ex);
 		} finally {
-			em.close();
+			em1.close();
 			emf.close();
 		}
-		System.out.println("Hello~");
 	}
 }
